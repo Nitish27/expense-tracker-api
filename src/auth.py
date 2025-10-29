@@ -6,19 +6,34 @@ from fastapi.security import OAuth2PasswordBearer
 from sqlalchemy.orm import Session
 from . import models
 from .database import get_db
+import bcrypt
 
 SECRET_KEY = "your-secret-key-change-in-production"  # Use environment variable
 ALGORITHM = "HS256"
 ACCESS_TOKEN_EXPIRE_MINUTES = 30
 
-pwd_context = CryptContext(schemes=["bcrypt"], deprecated="auto")
+
+
 oauth2_scheme = OAuth2PasswordBearer(tokenUrl="login")
 
-def verify_password(plain_password, hashed_password):
-  return pwd_context.verify(plain_password, hashed_password)
+def get_password_hash(password: str) -> str:
+    # Convert the password to bytes and truncate to 72 bytes
+    password_bytes = password.encode('utf-8')[:72]
+    # Generate a salt and hash the password
+    salt = bcrypt.gensalt()
+    hashed = bcrypt.hashpw(password_bytes, salt)
+    # Return the hash as a string
+    return hashed.decode('utf-8')
 
-def get_password_hash(password):
-  return pwd_context.hash(password)
+def verify_password(plain_password: str, hashed_password: str) -> bool:
+    # Convert both passwords to bytes, truncating plain_password
+    plain_bytes = plain_password.encode('utf-8')[:72]
+    hashed_bytes = hashed_password.encode('utf-8')
+    try:
+        # Verify the password
+        return bcrypt.checkpw(plain_bytes, hashed_bytes)
+    except Exception:
+        return False
 
 def create_access_token(data: dict):
   to_encode = data.copy()
